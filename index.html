@@ -221,6 +221,25 @@
                 }
             });
 
+            // 横浜市延焼範囲PMTilesソース
+            map.addSource("pmtiles-yokohama-fire-map", {
+                type: "raster",
+                url: "pmtiles://" + "https://xs489works.xsrv.jp/pmtiles-data/cpij-kantoearthquake-gis/GKE_FireSpread_Yokohama_20230515.pmtiles",
+                attribution: '<a href="https://www.cpij.or.jp/com/rev/kantoearthquake-gis.html">日本都市計画学会 関東大震災に関する情報のGISデータ化・活用プロジェクト</a>'
+            });
+
+            // 横浜市延焼範囲PMTilesレイヤ
+            map.addLayer({
+                'id': 'pmtiles-yokohama-fire-map',
+                'type': "raster",
+                'source': 'pmtiles-yokohama-fire-map',
+                "minzoom": 1,
+                "maxzoom": 23,
+                'layout': {
+                    'visibility': 'visible'
+                }
+            });
+
             // スライダーで東京市火災動態地図の不透明度を制御
             const sliderOpactiy = document.getElementById('slider-opacity');
             const sliderOpactiyValue = document.getElementById('slider-opacity-value');
@@ -228,6 +247,11 @@
             sliderOpactiy.addEventListener('input', (e) => {
                 map.setPaintProperty(
                     'pmtiles-tokyo-fire-map',
+                    'raster-opacity',
+                    parseInt(e.target.value, 10) / 100
+                );
+                map.setPaintProperty(
+                    'pmtiles-yokohama-fire-map',
                     'raster-opacity',
                     parseInt(e.target.value, 10) / 100
                 );

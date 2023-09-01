@@ -316,7 +316,8 @@
                     '<div style="border-bottom:1px solid #000;">伝承内容: ' + denshonaiyo + '</div>' +
                     '<div><a href="' + imgURL + '" target="_blank"><img src="' + imgURL + '" alt="画像" style="width: 100%; height: auto;"></a></div>' +
                     '<div style="border-bottom:1px solid #000;">ID: ' + id + '</div>' +
-                    '<div><a href="https://www.google.com/maps?q=' + lat + ',' + lng + '&hl=ja" target="_blank">🌎Google Maps</a></div>'
+                    '<div><a href="https://www.google.com/maps?q=' + lat + ',' + lng + '&hl=ja" target="_blank">🌎Google Maps</a></div>' +
+                    '<div><a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + lat + ',' + lng + '&hl=ja" target="_blank">📷Street View</a></div>'
                 )
                 .addTo(map);
         });

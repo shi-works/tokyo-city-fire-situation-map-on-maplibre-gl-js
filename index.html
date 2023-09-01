@@ -1,0 +1,326 @@
+<html>
+
+<head>
+    <title>東京市火災動態地図及び自然災害伝承碑</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://unpkg.com/maplibre-gl@3.1.0/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.1.0/dist/maplibre-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/pmtiles@2.10.0/dist/index.js"></script>
+    <script type="module" src="maplibre-gl-gsi-terrain-fast-png.js"></script>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .map-overlay {
+            font: bold 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 220px;
+            bottom: 20px;
+            left: 0;
+            padding: 10px;
+        }
+
+        .map-overlay .map-overlay-inner {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .map-overlay label {
+            display: block;
+            margin: 0 0 0px;
+            font-size: 12px;
+            top: 100px;
+            left: 10px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .map-overlay input {
+            background-color: transparent;
+            display: inline-block;
+            width: 100%;
+            position: relative;
+            margin: 0;
+            cursor: ew-resize;
+        }
+
+        .legend {
+            background-color: #fff;
+            border-radius: 3px;
+            bottom: 60px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+            font: 12px/14px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            padding: 10px;
+            position: absolute;
+            right: 10px;
+            z-index: 1;
+            line-height: 10px;
+            height: auto;
+        }
+
+        .legend h4 {
+            margin: 0 0 10px;
+        }
+
+        .legend div span {
+            border-radius: 50%;
+            display: inline-block;
+            height: 15px;
+            margin-right: 10px;
+            width: 15px;
+            color: orangered
+        }
+
+        .square {
+            width: 15px;
+            height: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <label>東京市火災動態地図 不透明度: <span id="slider-opacity-value">100%</span></label>
+            <input id="slider-opacity" type="range" min="0" max="100" step="1" value="100">
+            <label>陰影起伏図 不透明度: <span id="inei-slider-opacity-value">50%</span></label>
+            <input id="inei-slider-opacity" type="range" min="0" max="100" step="1" value="50">
+        </div>
+    </div>
+    <div id='legend' class='legend'>
+        <div><img src="./img/red-circle.png" alt="自然災害伝承碑" style="width:20px; height:20px;" />自然災害伝承碑</div><br>
+    </div>
+    <script type="text/javascript">
+        let protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.tile);
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'std.json',
+            zoom: 12.34,
+            minZoom: 1,
+            maxZoom: 23,
+            pitch: 0,
+            bearing: 0,
+            center: [139.77812, 35.68614],
+            hash: true,
+            attributionControl: false
+        });
+
+        // ズーム・回転
+        map.addControl(new maplibregl.NavigationControl());
+
+        // フルスクリーンモードのオンオフ
+        map.addControl(new maplibregl.FullscreenControl());
+
+        // 現在位置表示
+        map.addControl(new maplibregl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: false
+            },
+            fitBoundsOptions: { maxZoom: 18 },
+            trackUserLocation: true,
+            showUserLocation: true
+        }));
+
+        // スケール表示
+        map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }));
+
+        // Attributionを折りたたみ表示
+        map.addControl(new maplibregl.AttributionControl({
+            compact: true,
+            customAttribution: '（<a href="https://twitter.com/syanseto" target="_blank">Twitter</a> | <a href="https://github.com/shi-works/gsi-landformclassification-with-floodarea-on-maplibre-gl-js" target="_blank">Github</a>） '
+        }));
+
+        // 3D地形コントロール
+        map.addControl(
+            new maplibregl.TerrainControl({
+                source: 'gsidem',
+                exaggeration: 1 // 標高を強調する倍率
+            })
+        );
+
+        map.on('load', () => {
+            // 標高タイルソース
+            map.addSource("gsidem", {
+                type: 'raster-dem',
+                tiles: [
+                    'gsidem://https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png',
+                ],
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html#dem" target="_blank">地理院タイル(標高タイル)</a>',
+                tileSize: 256
+            });
+
+            // map.setTerrain({ 'source': 'gsidem', 'exaggeration': 1 });
+
+            // 陰影起伏図ソース
+            map.addSource("hillshade", {
+                type: 'raster',
+                tiles: [
+                    'https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png',
+                ],
+                attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html#hillshademap" target="_blank">地理院タイル(陰影起伏図)</a>',
+                tileSize: 256
+            });
+
+            // 陰影起伏図レイヤ
+            map.addLayer({
+                id: 'hillshade-tiles',
+                type: 'raster',
+                source: 'hillshade',
+                minzoom: 2,
+                maxzoom: 18,
+                paint: {
+                    'raster-opacity': 0.5
+                }
+            });
+
+            // スライダーで陰影起伏図の不透明度を制御
+            const inei_sliderOpactiy = document.getElementById('inei-slider-opacity');
+            const inei_sliderOpactiyValue = document.getElementById('inei-slider-opacity-value');
+
+            inei_sliderOpactiy.addEventListener('input', (e) => {
+                map.setPaintProperty(
+                    'hillshade-tiles',
+                    'raster-opacity',
+                    parseInt(e.target.value, 10) / 100
+                );
+                inei_sliderOpactiyValue.textContent = e.target.value + '%';
+            });
+
+            // 東京市火災動態地図PMTilesソース
+            map.addSource("pmtiles-tokyo-fire-map", {
+                type: "raster",
+                url: "pmtiles://" + "https://xs489works.xsrv.jp/pmtiles-data/Japanese-Map-Warper/Tokyo-City-Fire-Situation-Map/Tokyo-City-Fire-Situation-Map.pmtiles",
+                attribution: '<a href="https://mapwarper.h-gis.jp/layers/34?locale=en">Japanese-Map-Warper（東京市火災動態地図）</a>'
+            });
+
+            // 東京市火災動態地図PMTilesレイヤ
+            map.addLayer({
+                'id': 'pmtiles-tokyo-fire-map',
+                'type': "raster",
+                'source': 'pmtiles-tokyo-fire-map',
+                "minzoom": 1,
+                "maxzoom": 23,
+                'layout': {
+                    'visibility': 'visible'
+                }
+            });
+
+            // スライダーで東京市火災動態地図の不透明度を制御
+            const sliderOpactiy = document.getElementById('slider-opacity');
+            const sliderOpactiyValue = document.getElementById('slider-opacity-value');
+
+            sliderOpactiy.addEventListener('input', (e) => {
+                map.setPaintProperty(
+                    'pmtiles-tokyo-fire-map',
+                    'raster-opacity',
+                    parseInt(e.target.value, 10) / 100
+                );
+                sliderOpactiyValue.textContent = e.target.value + '%';
+            });
+
+            // 自然災害伝承碑ソース
+            map.addSource('denshouhi', {
+                'type': 'geojson',
+                'data': './20230824.geojson',
+                attribution: '<a href="https://www.gsi.go.jp/bousaichiri/denshouhi_datainfo.html">自然災害伝承碑データ（国土地理院Webサイト）</a>'
+            });
+
+            // シンボル定義
+            map.loadImage('./img/red-circle.png',
+                function (error, image) {
+                    if (error) throw error;
+                    map.addImage('red-circle', image);
+                }
+            );
+
+            // 自然災害伝承碑シンボルレイヤ
+            map.addLayer({
+                'id': 'denshouhi-1',
+                "type": "symbol",
+                'source': 'denshouhi',
+                "layout": {
+                    "icon-image": "red-circle",
+                    "icon-size": [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        1, 0.1,  // ズームレベル1でサイズは0.1
+                        12, 0.5  // ズームレベル12でサイズは0.5
+                    ],
+                    "icon-allow-overlap": true // シンボルの重なりを許可
+                }
+            });
+
+            map.showTileBoundaries = false;
+
+        })
+
+        // 画像が存在するかどうかを確認する関数
+        async function checkImage(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+
+        // 自然災害伝承碑ポップアップ表示
+        map.on('click', 'denshouhi-1', async (e) => {
+
+            var lng = e.features[0].geometry.coordinates[0];
+            var lat = e.features[0].geometry.coordinates[1];
+            var id = e.features[0].properties['ID'];
+            var himei = e.features[0].properties['碑名'];
+            var konryunen = e.features[0].properties['建立年'];
+            var shozaichi = e.features[0].properties['所在地'];
+            var saigaimei = e.features[0].properties['災害名'];
+            var saigaishubetsu = e.features[0].properties['災害種別'];
+            var denshonaiyo = e.features[0].properties['伝承内容'];
+
+            // 画像のURL（.jpgと.JPGの両方を試す）
+            let imgURL_jpg = "https://maps.gsi.go.jp/legend/disaster_lore/" + id.substring(0, 5) + "/" + id + ".jpg";
+            let imgURL_JPG = "https://maps.gsi.go.jp/legend/disaster_lore/" + id.substring(0, 5) + "/" + id + ".JPG";
+
+            // どちらの画像が存在するかを確認
+            let imgURL = await checkImage(imgURL_jpg) ? imgURL_jpg :
+                await checkImage(imgURL_JPG) ? imgURL_JPG :
+                    '';  // どちらの画像も存在しない場合は空の文字列を使用
+
+            // var imgURL = "https://maps.gsi.go.jp/legend/disaster_lore/" + id.substring(0, 5) + "/" + id + ".jpg";
+
+            new maplibregl.Popup()
+                .setLngLat(e.lngLat)
+                .setHTML(
+                    '<div style="border-bottom:1px solid #000; font-size: 1.2em; color: red;"><strong>碑名: ' + himei + '</strong></div>' +
+                    '<div style="border-bottom:1px solid #000;">建立年: ' + konryunen + '</div>' +
+                    '<div style="border-bottom:1px solid #000;">所在地: ' + shozaichi + '</div>' +
+                    '<div style="border-bottom:1px solid #000;">災害名: ' + saigaimei + '</div>' +
+                    '<div style="border-bottom:1px solid #000;">災害種別: ' + saigaishubetsu + '</div>' +
+                    '<div style="border-bottom:1px solid #000;">伝承内容: ' + denshonaiyo + '</div>' +
+                    '<div><a href="' + imgURL + '" target="_blank"><img src="' + imgURL + '" alt="画像" style="width: 100%; height: auto;"></a></div>' +
+                    '<div style="border-bottom:1px solid #000;">ID: ' + id + '</div>' +
+                    '<div><a href="https://www.google.com/maps?q=' + lat + ',' + lng + '&hl=ja" target="_blank">🌎Google Maps</a></div>'
+                )
+                .addTo(map);
+        });
+    </script>
+</body>
+
+</html>
